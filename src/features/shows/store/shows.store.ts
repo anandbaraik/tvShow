@@ -11,6 +11,10 @@ export const useShowsStore = defineStore('shows', () => {
   const status = ref<FetchStatus>('idle')
   const error = ref<string | null>(null)
 
+  const showDetails = ref<Record<string, TvShow>>({})
+  const detailStatus = ref<FetchStatus>('idle')
+  const detailError = ref<string | null>(null)
+
   async function fetchShows() {
     if (status.value === 'loading' || status.value === 'success') return
 
@@ -27,5 +31,30 @@ export const useShowsStore = defineStore('shows', () => {
     }
   }
 
-  return { shows, status, error, fetchShows }
+  async function fetchShowById(id: string) {
+    if (showDetails.value[id]) return
+
+    detailStatus.value = 'loading'
+    detailError.value = null
+
+    try {
+      const { fetchShowById: fetchShow } = useShowsQuery()
+      showDetails.value[id] = await fetchShow(id)
+      detailStatus.value = 'success'
+    } catch {
+      detailError.value = 'Failed to load show details. Please try again.'
+      detailStatus.value = 'error'
+    }
+  }
+
+  return {
+    shows,
+    status,
+    error,
+    fetchShows,
+    showDetails,
+    detailStatus,
+    detailError,
+    fetchShowById,
+  }
 })

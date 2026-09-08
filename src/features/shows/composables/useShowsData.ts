@@ -4,7 +4,16 @@ import { useShowsStore } from '../store/shows.store'
 
 export function useShowsData() {
   const store = useShowsStore()
-  const { shows, status, error } = storeToRefs(store)
+  const { shows, status, error, showDetails, detailStatus, detailError } = storeToRefs(store)
 
-  return { shows, status, error, fetchShows: store.fetchShows }
+  return {
+    shows,
+    status,
+    error,
+    fetchShows: store.fetchShows,
+    showDetails,
+    detailStatus,
+    detailError,
+    fetchShowById: store.fetchShowById,
+  }
 }

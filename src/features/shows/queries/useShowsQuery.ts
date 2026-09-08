@@ -1,5 +1,5 @@
 import { httpClient } from '../../../shared/api/httpClient'
-import { mapToTvShows } from '../mappers/show.mapper'
+import { mapToTvShow, mapToTvShows } from '../mappers/show.mapper'
 import type { TvShow } from '../types/show.types'
 import type { RawTvShow } from '../types/showApi.types'
 
@@ -11,5 +11,10 @@ export function useShowsQuery() {
     return mapToTvShows(data)
   }
 
-  return { fetchTopShows }
+  async function fetchShowById(id: string): Promise<TvShow> {
+    const { data } = await httpClient.get<RawTvShow>(`/${id}`)
+    return mapToTvShow(data)
+  }
+
+  return { fetchTopShows, fetchShowById }
 }

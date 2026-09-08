@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ShowGrid > matches its rendered markup snapshot 1`] = `
+"<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"><a to="[object Object]" class="block"><img src="https://example.com/image.jpg" alt="Breaking Bad" class="aspect-2/3 w-full rounded object-cover bg-gray-200" loading="lazy">
+    <p class="mt-1 truncate text-sm font-medium">Breaking Bad</p>
+    <p class="text-xs text-gray-500">★ 9.5</p>
+  </a><a to="[object Object]" class="block"><img src="https://example.com/image.jpg" alt="The Wire" class="aspect-2/3 w-full rounded object-cover bg-gray-200" loading="lazy">
+    <p class="mt-1 truncate text-sm font-medium">The Wire</p>
+    <p class="text-xs text-gray-500">★ 9.5</p>
+  </a></div>"
+`;

@@ -1,8 +1,10 @@
+import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  plugins: [vue()],
   test: {
-    globals: true, // Enable global variables like `describe`, `it`, etc.
-    environment: 'happy-dom', // Use the happy-dom environment for testing
+    environment: 'happy-dom',
+    pool: 'forks',
   },
 })

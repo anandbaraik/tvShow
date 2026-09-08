@@ -1,0 +1,15 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ShowDetail > matches its rendered markup snapshot 1`] = `
+"<div class="flex flex-col gap-4 sm:flex-row"><img src="https://example.com/image.jpg" alt="Breaking Bad" class="h-72 w-48 shrink-0 rounded object-cover bg-gray-200 self-center sm:self-start">
+  <div class="space-y-2">
+    <h1 class="text-2xl font-bold">Breaking Bad</h1>
+    <p class="text-sm text-gray-500"><span>★ 9.5</span><span> (20,00,000 votes)</span><span> · 2008–2013</span><span> · 47 min</span></p>
+    <div class="flex flex-wrap gap-2"><span class="rounded bg-gray-100 px-2 py-1 text-xs">Crime</span><span class="rounded bg-gray-100 px-2 py-1 text-xs">Drama</span></div>
+    <p class="text-gray-700">A chemistry teacher turns to manufacturing meth.</p>
+    <p class="text-sm text-gray-500"> Interests: Crime</p>
+    <p class="text-sm text-gray-500"> Filming locations: Albuquerque, New Mexico, USA</p>
+    <div class="flex gap-4 pt-2 text-sm"><a href="https://www.youtube.com/watch?v=HhesaQXLuRY" target="_blank" rel="noopener" class="text-blue-600 hover:underline"> Watch trailer </a><a href="https://www.imdb.com/title/tt0903747/" target="_blank" rel="noopener" class="text-blue-600 hover:underline"> View on IMDb </a></div>
+  </div>
+</div>"
+`;

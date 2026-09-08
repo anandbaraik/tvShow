@@ -1,0 +1,8 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ShowCard > matches its rendered markup snapshot 1`] = `
+"<a to="[object Object]" class="block"><img src="https://example.com/image.jpg" alt="Breaking Bad" class="aspect-2/3 w-full rounded object-cover bg-gray-200" loading="lazy">
+  <p class="mt-1 truncate text-sm font-medium">Breaking Bad</p>
+  <p class="text-xs text-gray-500">★ 9.5</p>
+</a>"
+`;

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-import { useShowsQuery } from '../queries/useShowsQuery'
+import { useShowsQuery, type SearchShowsParams } from '../queries/useShowsQuery'
 import type { TvShow } from '../types/show.types'
 
 export type FetchStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -14,6 +14,10 @@ export const useShowsStore = defineStore('shows', () => {
   const showDetails = ref<Record<string, TvShow>>({})
   const detailStatus = ref<FetchStatus>('idle')
   const detailError = ref<string | null>(null)
+
+  const searchResults = ref<TvShow[]>([])
+  const searchStatus = ref<FetchStatus>('idle')
+  const searchError = ref<string | null>(null)
 
   async function fetchShows() {
     if (status.value === 'loading' || status.value === 'success') return
@@ -47,6 +51,20 @@ export const useShowsStore = defineStore('shows', () => {
     }
   }
 
+  async function searchShows(params: SearchShowsParams) {
+    searchStatus.value = 'loading'
+    searchError.value = null
+
+    try {
+      const { searchShows: search } = useShowsQuery()
+      searchResults.value = await search(params)
+      searchStatus.value = 'success'
+    } catch {
+      searchError.value = 'Failed to search TV shows. Please try again.'
+      searchStatus.value = 'error'
+    }
+  }
+
   return {
     shows,
     status,
@@ -56,5 +74,9 @@ export const useShowsStore = defineStore('shows', () => {
     detailStatus,
     detailError,
     fetchShowById,
+    searchResults,
+    searchStatus,
+    searchError,
+    searchShows,
   }
 })

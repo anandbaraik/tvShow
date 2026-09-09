@@ -6,5 +6,6 @@ export default defineConfig({
   test: {
     environment: 'happy-dom',
     pool: 'forks',
+    fileParallelism: false,
   },
 })

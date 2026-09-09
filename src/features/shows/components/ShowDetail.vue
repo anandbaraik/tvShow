@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { TvShow } from '../types/show.types'
 
-defineProps<{ show: TvShow }>()
+defineProps<{ show: TvShow; bookmarked: boolean }>()
+defineEmits<{ 'toggle-bookmark': [] }>()
 </script>
 
 <template>
@@ -13,7 +14,16 @@ defineProps<{ show: TvShow }>()
     />
 
     <div class="space-y-2">
-      <h1 class="text-2xl font-bold">{{ show.title }}</h1>
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-bold">{{ show.title }}</h1>
+        <button
+          type="button"
+          class="rounded border px-2 py-1 text-sm"
+          @click="$emit('toggle-bookmark')"
+        >
+          {{ bookmarked ? '★ Bookmarked' : '☆ Bookmark' }}
+        </button>
+      </div>
 
       <p class="text-sm text-gray-500">
         <span v-if="show.averageRating">★ {{ show.averageRating.toFixed(1) }}</span>

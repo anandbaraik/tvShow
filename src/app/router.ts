@@ -12,6 +12,11 @@ const routes = [
     component: () => import('../features/shows/views/ShowDetailView.vue'),
   },
   {
+    path: '/bookmarks',
+    name: 'bookmarks',
+    component: () => import('../features/bookmarks/views/BookmarksView.vue'),
+  },
+  {
     path: '/about',
     name: 'about',
     component: () => import('../features/about/views/AboutView.vue'),

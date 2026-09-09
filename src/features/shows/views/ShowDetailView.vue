@@ -2,7 +2,7 @@
 import ShowDetail from '../components/ShowDetail.vue'
 import { useShowDetailPage } from '../pages/useShowDetailPage'
 
-const { show, status, error } = useShowDetailPage()
+const { show, status, error, bookmarked, toggleShowBookmark } = useShowDetailPage()
 </script>
 
 <template>
@@ -13,6 +13,6 @@ const { show, status, error } = useShowDetailPage()
     <p v-else-if="status === 'error'" class="text-red-600">{{ error }}</p>
     <p v-else-if="!show">Show not found.</p>
 
-    <ShowDetail v-else :show="show" />
+    <ShowDetail v-else :show="show" :bookmarked="bookmarked" @toggle-bookmark="toggleShowBookmark" />
   </div>
 </template>

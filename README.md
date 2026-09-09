@@ -1,6 +1,6 @@
 # TV Show Dashboard
 
-A dashboard for browsing IMDb's Top 250 TV shows, grouped by genre and sorted by rating, with a detail view and genre/rating/title filtering, built on the [IMDb236 RapidAPI](https://rapidapi.com/).
+A dashboard for browsing IMDb's Top 250 TV shows, grouped by genre and sorted by rating, with a detail view, genre/rating/title filtering, and bookmarking, built on the [IMDb236 RapidAPI](https://rapidapi.com/).
 
 ## Tech stack and why
 
@@ -9,7 +9,7 @@ A dashboard for browsing IMDb's Top 250 TV shows, grouped by genre and sorted by
 | **Vue 3 + Composition API** (`<script setup>`) | Explicitly requested. Composition API keeps state, derived data, and lifecycle for a single concern colocated in one function, which is what makes the composable-layering approach below possible — an Options API component can't be composed the same way. |
 | **TypeScript** | The API response is large and only partially used; a typed `RawTvShow` → `TvShow` mapping catches field-name mistakes (e.g. `primaryTitle` vs `title`) at compile time instead of at render time. |
 | **Vite** | Already scaffolded, and pairs with Vitest for zero-config unit testing on the same transform pipeline. |
-| **Pinia** | The official Vue 3 state store, explicitly requested. Used only for the `shows` domain (list, detail cache, search results) — nothing UI-only (filter/search input state) lives in the store. |
+| **Pinia** | The official Vue 3 state store, explicitly requested. One store per domain (`shows`, `bookmarks`) holding only raw state — nothing UI-only (filter/search input state) lives in a store. |
 | **Vue Router** | Explicitly requested. Routes are lazy-loaded (`component: () => import(...)`) and named, so each page ships its own JS chunk. |
 | **Axios** | Explicitly requested as the HTTP client; wrapped in one configured instance (`src/shared/api/httpClient.ts`) rather than called ad hoc, so the RapidAPI headers and base URL are set once. |
 | **Tailwind CSS v4** | Already configured in the project. Utility classes only, no custom CSS beyond the single `@import "tailwindcss"` — kept deliberately minimal per the brief. |
@@ -22,7 +22,7 @@ A dashboard for browsing IMDb's Top 250 TV shows, grouped by genre and sorted by
 ```
 src/
   app/            # router wiring
-  shared/          # cross-feature code: axios instance, env-derived config, generic composables, shared UI (navbar)
+  shared/          # cross-feature code: axios instance, env-derived config, generic composables, shared UI (navbar), test helpers
   features/
     shows/          # the shows domain: types, API, store, composables, components, views
       types/
@@ -33,11 +33,16 @@ src/
       components/
       views/
       mappers/        # raw API shape -> domain shape
-      test/           # shared test fixtures
+      test/           # shared test fixtures (buildShow())
+    bookmarks/       # the bookmarks domain — same layering, no query layer (see below)
+      store/
+      composables/
+      pages/
+      views/
     about/
 ```
 
-Each domain (`shows`, `about`) owns everything it needs; `shared/` only holds things more than one feature would otherwise duplicate (the HTTP client, env config, the debounce composable, the navbar).
+Each domain (`shows`, `bookmarks`, `about`) owns everything it needs; `shared/` only holds things more than one feature would otherwise duplicate (the HTTP client, env config, the debounce composable, the navbar, the `withSetup` test helper).
 
 ### Why the extra composable layers, not "component calls Pinia store directly"
 
@@ -61,7 +66,11 @@ The RapidAPI response includes many fields the UI never uses (`thumbnails`, `pro
 
 ### Filtering, sorting, search
 
-The default Home view is the Phase 1 behavior: shows grouped into horizontal genre rows (from the Top 250 list), each sorted by rating. Picking a genre, typing a title search, or changing the sort order switches to a flat, live-searched grid backed by the `/search` endpoint (`useHomePage.ts`'s `isFiltering` flag). Clearing all three returns to the grouped view. Title search is debounced via a generic `shared/composables/useDebounce.ts` (used nowhere else today, but written to be reusable).
+The default Home view is the Phase 1 behavior: shows grouped into horizontal genre rows (from the Top 250 list), each sorted by rating. Picking a genre, typing a title search, or changing the sort order switches to a flat, live-searched grid backed by the `/search` endpoint (`useHomePage.ts`'s `isFiltering` flag). Clearing all three returns to the grouped view. Title search is debounced via a generic `shared/composables/useDebounce.ts` (a debounced copy of a ref, using `watch`'s `onCleanup` to cancel a pending update — no manual timer bookkeeping).
+
+### Bookmarks
+
+A separate `features/bookmarks/` domain, following the same layering as `shows` minus the query layer — there's no API for it, it's pure client state. `bookmarks.store.ts` holds the bookmarked shows (full `TvShow` objects, not just ids, so a bookmark still renders even if the show later drops out of the Top 250 list or a search result) and persists them to `localStorage` under `tvshow.bookmarks` via a `watch`. No authentication: bookmarks are local to the browser. Toggling happens from the show detail page (`ShowDetail.vue`'s ★/☆ button); the `/bookmarks` route and nav link list everything bookmarked, reusing the same `ShowGrid` component the search results use.
 
 ## Environment variables
 
@@ -89,3 +98,13 @@ npm run build      # type-check (vue-tsc) + production build to dist/
 npm run preview    # serve the production build locally
 npm run test        # run the unit/component/snapshot test suite (Vitest)
 ```
+
+## Testing
+
+Every component, composable, and store has a test — 22 test files / 60 tests. A few conventions worth knowing before adding more:
+
+- **Config is split**: `vite.config.ts` (app build: Vue + Tailwind plugins) and `vitest.config.ts` (tests: Vue plugin only, `environment: 'happy-dom'`). Combining them broke `.vue` file transforms under Vitest — the Tailwind v4 Vite plugin doesn't play well with Vitest's transform pipeline on this Vite/Vitest version pair. `vitest.config.ts` also sets `pool: 'forks'` and `fileParallelism: false`; without both, test runs on this Windows/Vite 8/Vitest 5 combination intermittently crashed with `Vitest failed to find the runner` on a cold cache. If you ever see that error, it's this — not your test.
+- **Mocking rule**: each layer's test mocks only the layer directly beneath it (a store test mocks its query composable via `vi.mock('../queries/useShowsQuery', ...)`; a query test mocks `httpClient`; a page-composable or view test that goes through the real store also mocks the query composable — never mock two layers down).
+- **`shared/test/withSetup.ts`**: composables that call `onMounted` (`useHomePage`, `useShowDetailPage`) only run that hook inside a real component instance, so their tests use this helper to mount them in a throwaway host component instead of calling them as plain functions. Composables with no lifecycle hooks (`useBookmarksPage`, `useShowsData`, …) are just called directly — no `withSetup` needed.
+- **`features/shows/test/showFixture.ts`**: `buildShow(overrides?)` — one realistic `TvShow` fixture reused across test files instead of every file inlining its own sample object.
+- **Style**: each `it()` sets up its own `mount(...)`/mocks inline rather than sharing a helper function or `beforeEach`-configured mock across tests in the same file — a test should be readable on its own. `beforeEach`/`afterEach` are reserved for plain resets (`setActivePinia(createPinia())`, `localStorage.clear()`, fake timers), never for data a test depends on.

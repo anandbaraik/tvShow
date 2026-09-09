@@ -44,6 +44,19 @@ src/
 
 Each domain (`shows`, `bookmarks`, `about`) owns everything it needs; `shared/` only holds things more than one feature would otherwise duplicate (the HTTP client, env config, the debounce composable, the navbar, the `withSetup` test helper).
 
+### Why feature folders, not one `components/`, one `composables/`, one `store/` for the whole app
+
+The alternative — a type-first layout with a single root `components/`, `composables/`, `store/`, `views/` holding every file regardless of domain — groups files by what they technically *are* instead of what they're *for*. It looks simpler at first (fewer top-level folders) but degrades as features are added:
+
+- **Change locality.** Touching bookmarks in this layout means editing one folder, `features/bookmarks/`. In a type-first layout the same change touches `components/BookmarksView.vue`, `composables/useBookmarksData.ts`, `store/bookmarks.store.ts`, `views/BookmarksView.vue` — four folders, each also holding unrelated shows/about files you have to mentally filter out. That filtering cost grows with total app size, not with the feature being changed.
+- **Feature deletability.** Removing bookmarks today means deleting one folder. In type-first, you'd have to hunt every type-folder for bookmarks-shaped files and hope none were missed — this is how type-first codebases accumulate dead code over time.
+- **Visible coupling.** `useShowDetailPage.ts` reaching into `../../bookmarks/composables/useBookmarksData` is an explicit, greppable cross-feature import. In a flat `composables/` folder, borrowing another feature's composable looks identical to using your own — nothing signals that a cross-domain dependency was just created.
+- **Parallel work.** Two people building two different features aren't both editing the same root `composables/`/`store/` folder, so there are fewer incidental merge conflicts.
+
+The evidence from this codebase: adding bookmarks meant creating one new `features/bookmarks/` folder plus a couple of explicit cross-feature import lines into `shows/` — nothing pre-existing had to be reorganized to fit it in. That's the property that actually matters for scalability: the cost of adding feature *N+1* stays roughly constant, rather than growing with however many files already exist across the whole app.
+
+The honest tradeoff: for a one- or two-component app, type-first is less nesting and genuinely simpler. It stops paying off once there's more than a couple of features — which was already this app's trajectory (shows → about → bookmarks, likely more later). Feature-first is the bet that an app keeps growing; it's not the right default for something that will stay small.
+
 ### Why the extra composable layers, not "component calls Pinia store directly"
 
 Every screen is wired through a fixed chain:
@@ -60,6 +73,20 @@ View  →  Page composable  →  Data composable  →  Pinia store  →  Query c
 
 The payoff: each layer is independently testable (the query composable is tested with a mocked `httpClient`, `useGenreGroups` is tested with a plain ref, no store or component needed), and a view's template stays declarative — all the "how do we get this data" logic lives one layer down, not inline in `onMounted`.
 
+### API endpoints used
+
+All three under `https://imdb236.p.rapidapi.com/api/imdb`, called only from `queries/useShowsQuery.ts`:
+
+| Endpoint | Used by | Powers |
+|---|---|---|
+| `GET /top250-tv` | `fetchTopShows` | Home page's default genre-grouped view |
+| `GET /{id}` | `fetchShowById` | Show detail page (and re-fetches for bookmarked shows not in the current list) |
+| `GET /search?type=tvSeries&genre=&sortField=averageRating&sortOrder=&primaryTitleAutocomplete=&rows=25` | `searchShows` | Genre filter, rating sort, title search |
+
+### Responsive / mobile-first
+
+Tailwind's utilities are mobile-first by default — unprefixed classes apply at every width, `sm:`/`md:`/`lg:` only add overrides for wider viewports — so most of the UI needed no explicit breakpoint work at all. The two places breakpoints are actually used: `ShowGrid.vue`'s column count (`grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5`) and `ShowCard.vue`'s width inside a `GenreRow` (`w-32 sm:w-40`). Genre rows scroll horizontally (`overflow-x-auto`) rather than wrap, which works identically at any width without a breakpoint. No custom CSS or media queries anywhere — `style.css` is just `@import "tailwindcss";` — per the brief's "no fancy UI, minimal CSS" instruction.
+
 ### Data mapping
 
 The RapidAPI response includes many fields the UI never uses (`thumbnails`, `productionCompanies`, `budget`, …). `types/showApi.types.ts` types only the raw fields actually read; `mappers/show.mapper.ts` renames/trims them into the domain `TvShow` type (`types/show.types.ts`) used everywhere else in the app. Nothing outside the query composable ever sees the raw API shape.
@@ -71,6 +98,16 @@ The default Home view is the Phase 1 behavior: shows grouped into horizontal gen
 ### Bookmarks
 
 A separate `features/bookmarks/` domain, following the same layering as `shows` minus the query layer — there's no API for it, it's pure client state. `bookmarks.store.ts` holds the bookmarked shows (full `TvShow` objects, not just ids, so a bookmark still renders even if the show later drops out of the Top 250 list or a search result) and persists them to `localStorage` under `tvshow.bookmarks` via a `watch`. No authentication: bookmarks are local to the browser. Toggling happens from the show detail page (`ShowDetail.vue`'s ★/☆ button); the `/bookmarks` route and nav link list everything bookmarked, reusing the same `ShowGrid` component the search results use.
+
+## Trade-offs and known limitations
+
+Decisions made deliberately, with a real cost attached — worth knowing before extending any of them:
+
+- **The genre filter only offers genres it's actually seen.** There's no "list all genres" endpoint, so the `<select>` options come from `useGenreOptions`, derived from whatever's in the already-loaded Top 250 list. The `/search` endpoint itself covers a much larger catalog (tens of thousands of results for a genre like Drama alone) that may include genres the Top 250 never surfaces — those aren't selectable, even though the API would honor them.
+- **Search results are a flat, uncapped-looking list that's actually capped at 25.** `rows=25` is a fixed request param; the response's `numFound` is routinely in the thousands. There's no pagination or infinite scroll — a real product would need one.
+- **The show list and the show detail cache don't share data.** `shows.store.ts` keeps `shows` (the Top 250/search results) and `showDetails` (fetched-by-id) as two independent slices. Clicking a card always fetches that show again from `/api/imdb/{id}`, even though the same data just arrived via the list fetch. This was a deliberate choice — it means the detail page works for *any* id (including a bookmarked show that's no longer in the current list or search results) without needing to reconcile two data shapes — but it does mean a redundant network call on the common path.
+- **Bookmarks don't sync anywhere.** They're `localStorage`-only, tied to the "no authentication for now" scope in the brief. Clearing site data, switching browsers, or using a private window loses them. Adding real persistence later would mean introducing an actual backend and auth, not a bigger localStorage schema.
+- **An abstraction that got removed once it proved to have no reuse**: the genre/sort/search controls briefly lived in their own `ShowFilterBar.vue`, wired with `defineModel` for two-way binding. Once it was clear `HomeView.vue` was its only consumer and would stay that way, the component was deleted and the controls inlined directly into the view — the extra file and prop/emit indirection weren't earning their keep. Worth remembering next time a "reusable" component is extracted for something used exactly once.
 
 ## Environment variables
 

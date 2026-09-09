@@ -13,4 +13,13 @@ describe('ShowGrid', () => {
 
     expect(wrapper.html()).toMatchSnapshot()
   })
+
+  it('renders one card per show', () => {
+    const wrapper = mount(ShowGrid, {
+      props: { shows: [buildShow(), buildShow({ id: 'tt0000002', title: 'The Wire' })] },
+      global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
+    })
+
+    expect(wrapper.findAll('img')).toHaveLength(2)
+  })
 })
